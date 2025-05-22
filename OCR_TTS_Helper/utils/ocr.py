@@ -4,7 +4,7 @@ import numpy as np
 from PIL import Image
 
 # EasyOCR okuyucusu
-reader = easyocr.Reader(['tr', 'en'], gpu=False)
+reader = easyocr.Reader(['tr', 'en'], gpu=True)
 
 def ocr_from_file(image_path: str, lang="tr", **kwargs) -> str:
     """EasyOCR ile görselden metin çıkar."""

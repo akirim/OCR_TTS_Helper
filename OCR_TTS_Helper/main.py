@@ -12,12 +12,17 @@ import time
 import re
 import pygame
 
+
+
 # --- Global ayarlar (seçim kutularından güncelleniyor) ---
 settings = {
     "engine": "gtts",
     "lang_tts": "tr",
     "rate": 150
 }
+
+spoken_texts = []  # Seslendirilen metinleri sakla
+
 
 def normalize_text(text):
     return re.sub(r'[^\w]+', '', text).lower().strip()
@@ -48,6 +53,11 @@ def run_photo_mode():
     except Exception as e:
         messagebox.showerror("Hata", str(e))
 
+    if text.strip():
+        spoken_texts.append(text.strip())  # Geçmişe ekle
+
+
+
 def run_live_mode():
     try:
         live_ocr(
@@ -60,6 +70,8 @@ def run_live_mode():
         )
     except Exception as e:
         messagebox.showerror("Hata", str(e))
+
+
 
 def run_image_file():
     try:
@@ -78,6 +90,31 @@ def run_image_file():
             messagebox.showinfo("Sonuç", "Hiç metin algılanamadı.")
     except Exception as e:
         messagebox.showerror("Hata", str(e))
+    if text.strip():
+        spoken_texts.append(text.strip())  # Geçmişe ekle
+
+def show_history():
+    if not spoken_texts:
+        messagebox.showinfo("Geçmiş", "Henüz seslendirilen bir metin yok.")
+        return
+
+    history_win = tk.Toplevel(root)
+    history_win.title("📜 Sesli Okuma Geçmişi")
+    history_win.geometry("350x300")
+
+    listbox = tk.Listbox(history_win)
+    listbox.pack(fill="both", expand=True, padx=10, pady=10)
+
+    for item in spoken_texts[::-1]:
+        listbox.insert(tk.END, item[:80] + ("..." if len(item) > 80 else ""))  # Önizleme
+
+    def play_selected():
+        index = listbox.curselection()
+        if index:
+            speak_text(spoken_texts[::-1][index[0]], lang=settings["lang_tts"], engine_type=settings["engine"], rate=settings["rate"])
+
+    tk.Button(history_win, text="▶️ Seçili Metni Oku", command=play_selected).pack(pady=5)
+
 
 def update_settings():
     settings["engine"] = engine_var.get()
@@ -110,6 +147,7 @@ tk.Button(root, text="📷 Fotoğraf Çek", command=lambda: [update_settings(), 
 tk.Button(root, text="🖼 Görsel Yükle", command=lambda: [update_settings(), run_image_file()], font=("Arial", 12)).pack(pady=10)
 tk.Button(root, text="🎥 Kamera Modu (Canlı OCR)", command=lambda: [update_settings(), run_live_mode()], font=("Arial", 12)).pack(pady=10)
 tk.Button(root, text="🔁 Konuşmayı Yeniden Başlat", command=lambda: speak_text(text_output.get(1.0, tk.END).strip(), lang=settings["lang_tts"], engine_type=settings["engine"], rate=settings["rate"]), font=("Arial", 12)).pack(pady=10)
+tk.Button(root, text="📜 Geçmişi Göster", command=show_history, font=("Arial", 12)).pack(pady=10)
 tk.Button(root, text="😑 Konuşmayı Durdur", command=stop_speaking, font=("Arial", 12)).pack(pady=10)
 tk.Button(root, text="🧹 Önbelleği Temizle", command=lambda: [clear_tts_cache(), show_temp_popup("Başarılı", "✅ Önbellek temizlendi", duration=1500)], font=("Arial", 12)).pack(pady=10)
 
