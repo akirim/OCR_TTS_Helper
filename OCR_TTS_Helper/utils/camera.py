@@ -1,11 +1,22 @@
 import cv2
 import time
+import re
 import tkinter as tk
 
+def preprocess_image(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    thresh = cv2.adaptiveThreshold(
+        blur, 255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY, 11, 2
+    )
+    return thresh
+
+def clean_text(text):
+    return re.sub(r'[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ\s]', '', text)
+
 def capture_photo(save_path="captured.jpg"):
-    """
-    Kameradan görüntü alır, SPACE ile fotoğraf çeker, ESC ile çıkılır.
-    """
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         raise Exception("Kamera açılamadı.")
@@ -41,10 +52,6 @@ def live_ocr(
     rate=150,
     display_label=None
 ):
-    """
-    Kameradan canlı görüntü alır, 1 saniyede bir OCR yapar ve sonucu seslendirir.
-    Aynı metin tekrar edilmez, hatalar seslendirilmez.
-    """
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         raise Exception("Kamera açılamadı.")
@@ -61,16 +68,24 @@ def live_ocr(
 
         if time.time() - last_ocr_time > 2.0:
             last_ocr_time = time.time()
-            text = ocr_function(frame, lang=lang_ocr)
+
+            # ✅ Ön işleme uygulanıyor
+            processed = preprocess_image(frame)
+
+            # OCR fonksiyonuna işlenmiş görüntü veriliyor
+            text = ocr_function(processed, lang=lang_ocr)
 
             if text and text.strip() != prev_text and not text.startswith("Hata:"):
-                prev_text = text.strip()
-                print(f"Algılanan Metin: {text}")
+                # ✅ Metin temizleniyor
+                cleaned = clean_text(text.strip())
+                prev_text = cleaned
+
+                print(f"Algılanan Metin: {cleaned}")
 
                 if display_label:
-                    display_label.after(0, display_label.config, {'text': text.strip()})
+                    display_label.after(0, display_label.config, {'text': cleaned})
 
-                tts_function(text, lang=lang_tts, engine_type=engine_type, rate=rate)
+                tts_function(cleaned, lang=lang_tts, engine_type=engine_type, rate=rate)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
